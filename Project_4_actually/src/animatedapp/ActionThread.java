@@ -1,4 +1,4 @@
-package proj4;
+package animatedapp;
 
 
 import java.awt.*;

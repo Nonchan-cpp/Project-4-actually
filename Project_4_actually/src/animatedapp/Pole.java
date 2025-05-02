@@ -1,208 +1,117 @@
-package proj4;
+package animatedapp;
 
-
+import java.util.*;
 import java.awt.*;
-import java.awt.event.*;
-import javax.swing.*;
-    
+
 /**
- * The abstract framework for a thread that animates an application
+ * A class that will be used to implement the Reves puzzle.
+ * Since this class will be accessed by both painting and application threads and it is 
+ * mutable, make all methods synchronized.
  * 
- * @author Charles Hoot 
+ * @author Charles Hoot
  * @version 5.0
  */
 
+        
+public class Pole
+    {
+    private java.util.List<Disk> myDisks;
+    private String myName;
+    private int maxDisks;
     
-abstract public class ActionThread extends Thread
-{
-    
-    // These methods must be defined in a concrete subclass.
-    
-     /**
-     * Create the specialized animation panel that the application will use.
-     * @return A new animation panel.
-     */
-    abstract public JPanel createAnimationPanel();
-
-    
-     /**
-     * Create and place the GUI components for the application in the specialized
-     * animation panel.
-     */
-    abstract public void setUpApplicationSpecificControls();
-    
-     /**
-     * Initialize the variables that the application will use.
-     */
-    abstract public void init();
-    
-     /**
-     * Execute the application a single time.
-     */
-    abstract public void  executeApplication();
-    
-     /**
-     * What is the title to use for the application window.
-     * @return A title string.
-     */
-    abstract public String getApplicationTitle();
+    public Pole(String name,int max)
+    {
+        myDisks = new ArrayList<Disk>();
+        myName = name;
+        maxDisks = max;
+    }
     
     
     /**
-     * The constructor for objects of class ActionThread
+     * Get the name of the pole.
+     *
+     * @return     The name.
      */
-    public ActionThread()
+    synchronized public String getName()
     {
+       return myName;
+    }
+    
+    
+    
+    /**
+     * Add a disk on the pole.
+     *
+     * @param  d   The disk to add.
+     */
+    synchronized public void addDisk(Disk d)
+    {
+        myDisks.add(d);
+    }
+    
+    /**
+     * Remove a disk from the pole
+     *
+     * @return     The disk on the top or null if the pole is empty.
+     */
+    synchronized public Disk removeDisk()
+    {
+        Disk result = null;
+        int count = myDisks.size();
         
-        myPanel =  createAnimationPanel();
-        resetApplicationInThread = false;
-        killTheThread = false;
-        changesAllowed = true;
-       
-        setUpApplicationSpecificControls();       
+        if(count > 0)
+            result = (Disk) myDisks.remove(count-1);
+            
+        return result;
     }
     
-    
-    // **************************************************************************
-    // This code handles the mechanics of running the application in the thread
-    // It should not depend on the actual application being run
-    // **************************************************************************
-    
-    private boolean resetApplicationInThread;
-    private boolean killTheThread;
-    private boolean changesAllowed;
-    private Stepper myStepper;
-    private JPanel myPanel;
-
-
-
-     /**
-     * Time to wait for the user.  Make it well behaved too.
+    /**
+     * Get the number of disks on the pole.
+     *
+     * @return     The number of disks on the pole.
      */
-    public final void animationPause()
+    synchronized public int getCount()
     {
-        myStepper.animationStep();
-        makeThreadWellBehaved();
-    }
-
-     /**
-     * Time to wait for the user.  Force to the last step.
-     */
-    public final void forceLastPause()
-    {
-        myStepper.finalStep();
-        makeThreadWellBehaved();
-    }
-
-     
-     /**
-     * Check to see if the thread should kill itself or reset the execution of
-     * the application.
-     */
-    public final void makeThreadWellBehaved()
-    {
-        if(killTheThread)
-            throw new KillThreadException("Thread is being killed");
-        if(resetApplicationInThread)
-            throw new ResetApplicationException("Application is being reset");
-    }
-    
-     /**
-     * Return the specialized panel so the animation frame can include it.
-     * @return The animation panel.
-     */
-    public final JPanel getAnimationPanel()
-    {
-        return myPanel;
-    }
-    
-    
-    
-     /**
-     * Determine if the application specific controls should be active.
-     * @return True if the controls should be active, false otherwise.
-     */
-    public final boolean applicationControlsAreActive()
-    {
-        return changesAllowed;
+        return myDisks.size();
     }
         
-    
-    
-    
-     /**
-     * Use the given stepper to control the animation.
-     * @param s a stepper
-     */
-    public final void setStepper(Stepper s)
-    {
-        myStepper = s;
-    }
-    
-     /**
-     * Signals that the thread should reset the execution of the application.
-     */
-    public final void resetExecution()
-    {
-        resetApplicationInThread = true;
-    }
-    
-     /**
-     * Signals that the thread should kill itself at the first opportunity.
-     */
-    public final void killThread()
-    {
-        killTheThread = true;
-    }
-  
-     /**
-     * Run the application multiple times.  This satisfies Thread responsibilities.
-     */
-    public final void run()
-    {
-        boolean keepGoing = true;
-        //This will allow many executions of the application
         
-        while(keepGoing)
+    public static final int POLEWIDTH = 3; 
+    
+    /**
+     * Draw a representation of the pole and its disks at the given location.
+     * 
+     * @param   g  The graphics context to draw on.  
+     * @param   baseCenterX  The x position of the center of the base of the pole.
+     * @param   baseY  The y position of the base of the pole.
+     * @param   scale   The amount to scale the Pole by.
+     * 
+     */
+
+    synchronized public void drawOn(Graphics g, int baseCenterX, int baseY, int scale)
+    {
+        int poleHeight = Disk.BASEHEIGHT*(maxDisks+1);
+        
+        int width = POLEWIDTH*scale;
+        int height = poleHeight*scale;
+        
+        int upperLeftX = baseCenterX - width/2;
+        int upperLeftY = baseY - height;
+        
+        // Draw Pole
+        g.setColor(Color.black);
+        g.fillRect(upperLeftX, upperLeftY, width, height);
+        
+        // Draw each Disk
+        Iterator<Disk> iter = myDisks.iterator();
+        int drawDiskY = baseY-Disk.BASEHEIGHT*scale/2;
+        for(int i = 0; i<myDisks.size(); i++)
         {
-            // basic initialization for application
-            init();
-            changesAllowed = true;
-            
-            //This is the setup animation step.  The user can make changes beyond the
-            // basic initialization before starting the using private controls.
-            myStepper.setupStep();
-            
-            // No changes allowed now
-            changesAllowed = false;
-
-            try
-            {            
-                // This will be the initial state display
-                init();
-                myStepper.initialStateStep();
-                makeThreadWellBehaved();
-                
-                // Start up the application
-                    executeApplication();
-                
-                //This is the finish animation step.  
-                //Nothing should happen until reset is pressed
-                myStepper.finalStep();
-
-            }
-            catch(KillThreadException e)
-            {
-                keepGoing = false;
-            }
-            catch(ResetApplicationException e)
-            {
-                //We got reset; go around again!
-            }                        
-            resetApplicationInThread = false;
+            Disk toDraw = iter.next();
+            toDraw.drawOn(g, baseCenterX, drawDiskY, scale);
+            drawDiskY -= Disk.BASEHEIGHT*scale;
         }
-    }
-    
-            
-} // end abstract class ActionThread
-
+        
+    }      
+        
+}
