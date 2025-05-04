@@ -53,29 +53,38 @@ public class RevesActionThread extends ActionThread
     
     public void init() 
     {
-    	disks = disksToUse;  // Number of disks to use (taken from the GUI or default)
-        movesMade = 0;
-        moveString = "";
+    	 try {
+    	        if (disksTextField != null) {  // ensure GUI field exists
+    	            int guiValue = Integer.parseInt(disksTextField.getText().trim());
+    	            if (guiValue >= 1 && guiValue <= 10) {
+    	                disksToUse = guiValue;
+    	            }
+    	        }
+    	    } catch (Exception e) {
+    	        // fallback, keep old value
+    	    }
 
-        // Create the four poles
-        a = new Pole("Pole A", disks);  // Pole A will hold the disks initially
-        b = new Pole("Pole B", disks);  // Pole B is an extra pole
-        c = new Pole("Pole C", disks);  // Pole C is another extra pole
-        d = new Pole("Pole D", disks);  // Pole D is the destination pole
+    	    movesMade = 0;
+    	    moveString = "";
 
-        // Add disks to Pole A (largest to smallest)
-        for (int i = disks; i > 0; i--) {
-            a.addDisk(new Disk(i));  // Add a disk of size 'i' to Pole A
-        }
+    	    // Always create 10-disk poles visually
+    	    a = new Pole("Pole A", 10);
+    	    b = new Pole("Pole B", 10);
+    	    c = new Pole("Pole C", 10);
+    	    d = new Pole("Pole D", 10);
 
-        // INITIALIZATION CODE from Kanon
-
-    }
+    	    // Add all 10 disks visually
+    	    for (int i = 10; i > 0; i--) {
+    	        a.addDisk(new Disk(i));
+    	    }
+    	}
         
 
     public void executeApplication()
     {
-    	moveDisk(a,b);
+    	 reves(disksToUse, a, d, b, c);
+    	 
+    	 throw new KillThreadException("Stopping after moving specified disks");
     }
 
     /**
@@ -107,21 +116,48 @@ public class RevesActionThread extends ActionThread
     public void towersOfHanoi(int n, Pole from, Pole to, Pole extra)
     {
         if (n == 1) {
-            // Base case: Move the single disk directly from 'from' to 'to'
             moveDisk(from, to);
         } else {
             // Recursive case:
             
-            // Step 1: Move n-1 disks from 'from' to 'extra', using 'to' as an auxiliary
             towersOfHanoi(n - 1, from, extra, to);
             
-            // Step 2: Move the nth disk from 'from' to 'to'
             moveDisk(from, to);
             
-            // Step 3: Move the n-1 disks from 'extra' to 'to', using 'from' as an auxiliary
             towersOfHanoi(n - 1, extra, to, from);
         }
     }
+    
+    public int computeK(int n)
+    {
+        int k = 1;
+        // Loop until the kth triangular number is greater than or equal to n
+        while ((k * (k + 1)) / 2 < n) {
+            k++;
+        }
+        return k;
+    }
+    
+    public void reves(int n, Pole from, Pole to, Pole extra1, Pole extra2) {
+        if (n == 0) {
+            // no disks to move
+            return;
+        }
+        if (n == 1) {
+            // base case: just move one disk
+            moveDisk(from, to);
+        } else {
+            // 1) pick k based on triangular numbers
+            int k = computeK(n);
+            // 2) move top (n-k) disks to extra1
+            reves(n - k, from, extra1, extra2, to);
+            // 3) move remaining k disks from 'from' to 'to' via 3-pole Hanoi
+            towersOfHanoi(k, from, to, extra2);
+            // 4) move the (n-k) disks from extra1 to 'to'
+            reves(n - k, extra1, to, from, extra2);
+        }
+    }
+    
     // ADD METHODS HERE
     
     /***************************************************************************
